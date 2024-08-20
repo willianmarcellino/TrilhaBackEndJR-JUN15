@@ -1,0 +1,54 @@
+[tool.poetry]
+name = "trilhabackendjr-jun15"
+version = "0.1.0"
+description = ""
+authors = ["Willian Marcellino <willianmarcellino@outlook.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.12.*"
+fastapi = "^0.111.1"
+sqlalchemy = "^2.0.31"
+pydantic-settings = "^2.4.0"
+alembic = "^1.13.2"
+pwdlib = {extras = ["argon2"], version = "^0.2.0"}
+python-multipart = "^0.0.9"
+pyjwt = "^2.9.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
+pytest-cov = "^5.0.0"
+ruff = "^0.5.5"
+taskipy = "^1.13.0"
+factory-boy = "^3.3.0"
+freezegun = "^1.5.1"
+
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = '-p no:warnings'
+
+[tool.ruff]
+line-length = 79
+indent-width = 4
+extend-exclude = ['migrations']
+
+[tool.ruff.lint]
+preview = true
+select = ['I', 'F', 'E', 'W', 'PL', 'PT']
+
+[tool.ruff.format]
+preview = true
+quote-style = 'single'
+line-ending = 'auto'
+
+[tool.taskipy.tasks]
+lint = 'ruff check . && ruff check . --diff'
+format = 'ruff check . --fix && ruff format .'
+run-dev = 'fastapi dev src/main.py'
+test = 'pytest -s -x --cov=src -vv'
+post_test = 'coverage html'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
