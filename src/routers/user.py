@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from src.dependencies import get_current_user, get_session
 from src.models import UserModel
 from src.schemas import (
+    InfoSuccessSchema,
     UserCreateSchema,
     UserPublicSchema,
     UserUpdateSchema,
@@ -144,4 +145,28 @@ def update_user(
 
     raise HTTPException(
         detail='Nothing to update', status_code=status.HTTP_400_BAD_REQUEST
+    )
+
+
+@router.delete(
+    '/',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=InfoSuccessSchema,
+)
+def delete_user(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+):
+    try:
+        session.delete(current_user)
+        session.commit()
+
+    except Exception as error:  # pragma: no cover
+        session.rollback()
+        raise error
+
+    return JSONResponse(
+        content={'success': 'User deleted successfully'},
+        status_code=status.HTTP_200_OK,
     )

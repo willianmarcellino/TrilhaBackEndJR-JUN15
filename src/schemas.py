@@ -29,3 +29,7 @@ class Token(BaseModel):
 
 class TokenSchema(BaseModel):
     access_token: Token
+
+
+class InfoSuccessSchema(BaseModel):
+    success: str
