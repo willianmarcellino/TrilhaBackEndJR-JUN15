@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from src.dependencies import get_current_user, get_session
 from src.models import LabelModel, UserModel
 from src.schemas import (
+    InfoSuccessSchema,
     LabelCreateSchema,
     LabelPublicSchema,
     LabelsPublicSchema,
@@ -164,6 +165,39 @@ def update_label(
             raise error
 
         return label
+
+    raise HTTPException(
+        detail='Label not found', status_code=status.HTTP_404_NOT_FOUND
+    )
+
+
+@router.delete(
+    '/{label_id}',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=InfoSuccessSchema,
+)
+def delete_label(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    label_id: Annotated[int, Path()],
+):
+    label = session.scalar(
+        select(LabelModel).where(
+            LabelModel.user_id == current_user.id, LabelModel.id == label_id
+        )
+    )
+
+    if label:
+        try:
+            session.delete(label)
+            session.commit()
+
+        except Exception as error:  # pragma: no cover
+            session.rollback()
+            raise error
+
+        return {'success': 'Label deleted successfully'}
 
     raise HTTPException(
         detail='Label not found', status_code=status.HTTP_404_NOT_FOUND
