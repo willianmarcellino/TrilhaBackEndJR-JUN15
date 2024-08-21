@@ -12,6 +12,7 @@ from src.models import UserModel
 from src.schemas import (
     UserCreateSchema,
     UserPublicSchema,
+    UserUpdateSchema,
 )
 from src.security import get_password_hash
 
@@ -81,3 +82,66 @@ def show_user(
     current_user: Annotated[UserModel, Depends(get_current_user)],
 ):
     return current_user
+
+
+@router.patch(
+    '/',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=UserPublicSchema,
+)
+def update_user(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    user_input: Annotated[UserUpdateSchema, Body()],
+):
+    if user_input.username or user_input.email or user_input.password:
+        if (
+            user_input.username
+            and user_input.username != current_user.username
+        ):
+            result = session.scalar(
+                select(UserModel).where(
+                    UserModel.username == user_input.username
+                )
+            )
+
+            if result:
+                raise HTTPException(
+                    detail='Username already exists',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+            current_user.username = user_input.username
+
+        if user_input.email and user_input.email != current_user.email:
+            result = session.scalar(
+                select(UserModel).where(UserModel.email == user_input.email)
+            )
+
+            if result:
+                raise HTTPException(
+                    detail='Email already exists',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+
+            current_user.email = user_input.email
+
+        if user_input.password:
+            current_user.password_hash = get_password_hash(user_input.password)
+
+        current_user.updated_at = datetime.now(timezone(timedelta(hours=-3)))
+
+        try:
+            session.add(current_user)
+            session.commit()
+
+        except Exception as error:  # pragma: no cover
+            session.rollback()
+            raise error
+
+        return current_user
+
+    raise HTTPException(
+        detail='Nothing to update', status_code=status.HTTP_400_BAD_REQUEST
+    )
