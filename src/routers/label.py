@@ -1,7 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, Query, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    status,
+)
 from fastapi.responses import JSONResponse
 from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
@@ -93,3 +101,29 @@ def show_all_labels(
     ).all()
 
     return {'labels': labels}
+
+
+@router.get(
+    '/{label_id}',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=LabelPublicSchema,
+)
+def show_label(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    label_id: Annotated[int, Path()],
+):
+    label = session.scalar(
+        select(LabelModel).where(
+            LabelModel.user_id == current_user.id, LabelModel.id == label_id
+        )
+    )
+
+    if label:
+        return label
+
+    raise HTTPException(
+        detail='Label not found',
+        status_code=status.HTTP_404_NOT_FOUND,
+    )
