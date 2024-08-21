@@ -20,6 +20,7 @@ from src.schemas import (
     LabelCreateSchema,
     LabelPublicSchema,
     LabelsPublicSchema,
+    LabelUpdateSchema,
 )
 
 router = APIRouter(prefix='/label', tags=['Label'])
@@ -126,4 +127,44 @@ def show_label(
     raise HTTPException(
         detail='Label not found',
         status_code=status.HTTP_404_NOT_FOUND,
+    )
+
+
+@router.patch(
+    '/{label_id}',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=LabelPublicSchema,
+)
+def update_label(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    label_id: Annotated[int, Path()],
+    label_input: Annotated[LabelUpdateSchema, Body()],
+):
+    label = session.scalar(
+        select(LabelModel).where(
+            LabelModel.user_id == current_user.id, LabelModel.id == label_id
+        )
+    )
+
+    if label:
+        for key, value in label_input.model_dump(exclude_unset=True).items():
+            setattr(label, key, value)
+
+        label.updated_at = datetime.now(timezone(timedelta(hours=-3)))
+
+        try:
+            session.add(label)
+            session.commit()
+            session.refresh(label)
+
+        except Exception as error:  # pragma: no cover
+            session.rollback()
+            raise error
+
+        return label
+
+    raise HTTPException(
+        detail='Label not found', status_code=status.HTTP_404_NOT_FOUND
     )

@@ -57,3 +57,9 @@ class LabelCreateSchema(BaseModel):
         Field(min_length=7, max_length=7, pattern=r'^#[0-9a-fA-F]{6}$'),
     ]
     priority: Annotated[int, Field(ge=1, le=10)]
+
+
+class LabelUpdateSchema(BaseModel):
+    title: Annotated[str | None, Field(max_length=100)] = None
+    color: Annotated[str | None, Field(pattern=r'^#[0-9a-fA-F]{6}$')] = None
+    priority: Annotated[int | None, Field(ge=1, le=10)] = None
