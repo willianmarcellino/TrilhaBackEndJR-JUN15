@@ -46,6 +46,10 @@ class LabelPublicSchema(BaseModel):
     created_at: datetime
 
 
+class LabelsPublicSchema(BaseModel):
+    labels: list[LabelPublicSchema]
+
+
 class LabelCreateSchema(BaseModel):
     title: Annotated[str, Field(max_length=100)]
     color: Annotated[

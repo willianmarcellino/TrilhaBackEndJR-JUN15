@@ -1,13 +1,18 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, status
+from fastapi import APIRouter, Body, Depends, Query, status
 from fastapi.responses import JSONResponse
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
 from src.dependencies import get_current_user, get_session
 from src.models import LabelModel, UserModel
-from src.schemas import LabelCreateSchema, LabelPublicSchema
+from src.schemas import (
+    LabelCreateSchema,
+    LabelPublicSchema,
+    LabelsPublicSchema,
+)
 
 router = APIRouter(prefix='/label', tags=['Label'])
 
@@ -43,3 +48,48 @@ def create_label(
         raise error
 
     return label
+
+
+@router.get(
+    '/all',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=LabelsPublicSchema,
+)
+def show_all_labels(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    page_size: Annotated[int, Query(gt=0)] = 10,
+    page: Annotated[int, Query(ge=0)] = 0,
+    order_by: Annotated[
+        str,
+        Query(
+            pattern=r'^(?:(?:id|title|color|priority|created_at)-'
+            r'(?:asc|desc)){1}$'
+        ),
+    ] = 'priority-desc,',
+):
+    column, sort = order_by.split('-')
+
+    orders = {
+        'id': LabelModel.id,
+        'title': LabelModel.title,
+        'color': LabelModel.color,
+        'priority': LabelModel.priority,
+    }
+
+    if sort == 'asc':
+        order = asc(orders[column])
+
+    else:
+        order = desc(orders[column])
+
+    labels = session.scalars(
+        select(LabelModel)
+        .where(LabelModel.user_id == current_user.id)
+        .limit(page_size)
+        .offset(page)
+        .order_by(order)
+    ).all()
+
+    return {'labels': labels}
