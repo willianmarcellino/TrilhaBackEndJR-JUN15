@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from src.dependencies import get_session
+from src.dependencies import get_current_user, get_session
 from src.models import UserModel
 from src.schemas import (
     UserCreateSchema,
@@ -69,3 +69,15 @@ def create_user(
         raise error
 
     return user
+
+
+@router.get(
+    '/',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=UserPublicSchema,
+)
+def show_user(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+):
+    return current_user
