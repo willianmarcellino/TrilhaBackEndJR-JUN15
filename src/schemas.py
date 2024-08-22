@@ -3,6 +3,8 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from src.models import TaskStates
+
 
 class UserPublicSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -63,3 +65,22 @@ class LabelUpdateSchema(BaseModel):
     title: Annotated[str | None, Field(max_length=100)] = None
     color: Annotated[str | None, Field(pattern=r'^#[0-9a-fA-F]{6}$')] = None
     priority: Annotated[int | None, Field(ge=1, le=10)] = None
+
+
+class TaskPublicSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    title: str
+    description: str
+    status: TaskStates
+    label: LabelPublicSchema | None = None
+    expires_at: datetime
+    updated_at: datetime
+    created_at: datetime
+
+
+class TaskCreateSchema(BaseModel):
+    title: Annotated[str, Field(max_length=100)]
+    description: Annotated[str, Field(max_length=255)] = ''
+    expires_at: Annotated[datetime, Field()]
+    label_id: Annotated[int | None, Field(gt=0)] = None
