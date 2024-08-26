@@ -88,3 +88,11 @@ class TaskCreateSchema(BaseModel):
     description: Annotated[str, Field(max_length=255)] = ''
     expires_at: Annotated[datetime, Field()]
     label_id: Annotated[int | None, Field(gt=0)] = None
+
+
+class TaskUpdateSchema(BaseModel):
+    title: Annotated[str | None, Field(max_length=100)] = None
+    status: TaskStates | None = None
+    description: Annotated[str | None, Field(max_length=255)] = None
+    expires_at: Annotated[datetime | None, Field()] = None
+    label_id: Annotated[int | None, Field(gt=0)] = None

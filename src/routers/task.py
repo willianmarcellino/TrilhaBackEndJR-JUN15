@@ -16,7 +16,12 @@ from sqlalchemy.orm import Session
 
 from src.dependencies import get_current_user, get_session
 from src.models import LabelModel, TaskModel, TaskStates, UserModel
-from src.schemas import TaskCreateSchema, TaskPublicSchema, TasksPublicSchema
+from src.schemas import (
+    TaskCreateSchema,
+    TaskPublicSchema,
+    TaskUpdateSchema,
+    TasksPublicSchema,
+)
 
 router = APIRouter(prefix='/task', tags=['Task'])
 
@@ -190,4 +195,72 @@ def show_task(
 
     raise HTTPException(
         detail='Label not found', status_code=status.HTTP_404_NOT_FOUND
+    )
+
+
+@router.patch(
+    '/{task_id}',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=TaskPublicSchema,
+)
+def update_task(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    task_id: Annotated[int, Path()],
+    task_input: Annotated[TaskUpdateSchema, Body()],
+):
+    task = session.scalar(
+        select(TaskModel).where(
+            TaskModel.user_id == current_user.id, TaskModel.id == task_id
+        )
+    )
+
+    if task:
+        if task_input.expires_at:
+            if (
+                task_input.expires_at.timestamp()
+                < datetime.now(timezone(timedelta(hours=-3))).timestamp()
+            ):
+                return HTTPException(
+                    detail='The datetime entered is in the past',
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                )
+            else:
+                task.expires_at = task_input.expires_at
+
+        if task_input.label_id:
+            label_in_db = session.scalar(
+                select(LabelModel).where(
+                    LabelModel.user_id == current_user.id,
+                    LabelModel.id == task_input.label_id,
+                )
+            )
+
+            if not label_in_db:
+                raise HTTPException(
+                    detail='Label not found',
+                    status_code=status.HTTP_404_NOT_FOUND,
+                )
+
+            task.label_id = task_input.label_id
+
+        for key, value in task_input.model_dump(exclude_unset=True).items():
+            setattr(task, key, value)
+
+        task.updated_at = datetime.now(timezone(timedelta(hours=-3)))
+
+        try:
+            session.add(task)
+            session.commit()
+            session.refresh(task)
+
+        except Exception as error:
+            session.rollback()
+            raise error
+
+        return task
+
+    raise HTTPException(
+        detail='Task not found', status_code=status.HTTP_404_NOT_FOUND
     )
