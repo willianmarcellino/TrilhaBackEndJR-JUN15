@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from src.dependencies import get_current_user, get_session
 from src.models import LabelModel, TaskModel, TaskStates, UserModel
 from src.schemas import (
+    InfoSuccessSchema,
     TaskCreateSchema,
     TaskPublicSchema,
     TaskUpdateSchema,
@@ -260,6 +261,39 @@ def update_task(
             raise error
 
         return task
+
+    raise HTTPException(
+        detail='Task not found', status_code=status.HTTP_404_NOT_FOUND
+    )
+
+
+@router.delete(
+    '/{task_id}',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=InfoSuccessSchema,
+)
+def delete_task(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    task_id: Annotated[int, Path()],
+):
+    task = session.scalar(
+        select(TaskModel).where(
+            TaskModel.user_id == current_user.id, TaskModel.id == task_id
+        )
+    )
+
+    if task:
+        try:
+            session.delete(task)
+            session.commit()
+
+        except Exception as error:
+            session.rollback()
+            raise error
+
+        return {'success': 'Task deleted successfully'}
 
     raise HTTPException(
         detail='Task not found', status_code=status.HTTP_404_NOT_FOUND
