@@ -20,8 +20,8 @@ from src.schemas import (
     InfoSuccessSchema,
     TaskCreateSchema,
     TaskPublicSchema,
-    TaskUpdateSchema,
     TasksPublicSchema,
+    TaskUpdateSchema,
 )
 
 router = APIRouter(prefix='/task', tags=['Task'])
@@ -34,7 +34,9 @@ router = APIRouter(prefix='/task', tags=['Task'])
     response_model=TaskPublicSchema,
 )
 def create_task(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     task_input: Annotated[TaskCreateSchema, Body()],
 ):
@@ -93,7 +95,9 @@ def create_task(
     response_model=TasksPublicSchema,
 )
 def show_all_tasks(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     page_size: Annotated[int, Query(gt=0)] = 10,
     page: Annotated[int, Query(ge=0)] = 0,
@@ -169,7 +173,9 @@ def show_all_tasks(
     response_model=TaskPublicSchema,
 )
 def show_task(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     task_id: Annotated[int, Path(gt=0)],
 ):
@@ -206,7 +212,9 @@ def show_task(
     response_model=TaskPublicSchema,
 )
 def update_task(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     task_id: Annotated[int, Path()],
     task_input: Annotated[TaskUpdateSchema, Body()],
@@ -274,7 +282,9 @@ def update_task(
     response_model=InfoSuccessSchema,
 )
 def delete_task(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     task_id: Annotated[int, Path()],
 ):

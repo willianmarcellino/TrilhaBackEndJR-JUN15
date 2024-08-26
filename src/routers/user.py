@@ -80,7 +80,9 @@ def create_user(
     response_model=UserPublicSchema,
 )
 def show_user(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
 ):
     return current_user
 
@@ -92,7 +94,9 @@ def show_user(
     response_model=UserPublicSchema,
 )
 def update_user(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     user_input: Annotated[UserUpdateSchema, Body()],
 ):
@@ -155,7 +159,9 @@ def update_user(
     response_model=InfoSuccessSchema,
 )
 def delete_user(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
 ):
     try:

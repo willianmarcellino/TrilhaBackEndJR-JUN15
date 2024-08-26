@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -19,40 +19,55 @@ def get_session():
         yield session
 
 
-def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    session: Annotated[Session, Depends(get_session)],
-):
-    credentials_exception = HTTPException(
-        status.HTTP_401_UNAUTHORIZED,
-        'Invalid or expired token',
-        headers={'WWW-Authenticate': 'Bearer'},
-    )
-
-    try:
-        payload = jwt.decode(
-            jwt=token,
-            key=Settings().ACCESS_TOKEN_KEY,  # type:ignore
-            algorithms=[Settings().TOKEN_ALGORITHM],  # type:ignore
-            options={
-                'required': ['sub', 'exp'],
-                'verify_exp': False,
-            },
+def get_current_user(which_token: Literal['access_token', 'refresh_token']):
+    def inner(
+        token: Annotated[str, Depends(oauth2_scheme)],
+        session: Annotated[Session, Depends(get_session)],
+    ):
+        credentials_exception = HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            'Invalid or expired token',
+            headers={'WWW-Authenticate': 'Bearer'},
         )
 
-        username = payload.get('sub')
-        expire = payload.get('exp', 0)
-        current_datetime = datetime.now(timezone(timedelta(hours=-3)))
+        try:
+            if which_token == 'access_token':
+                payload = jwt.decode(
+                    jwt=token,
+                    key=Settings().ACCESS_TOKEN_KEY,  # type:ignore
+                    algorithms=[Settings().TOKEN_ALGORITHM],  # type:ignore
+                    options={
+                        'required': ['sub', 'exp'],
+                        'verify_exp': False,
+                    },
+                )
 
-        if expire > current_datetime.timestamp():
-            user = session.scalar(
-                select(UserModel).where(UserModel.username == username)
-            )
+            elif which_token == 'refresh_token':
+                payload = jwt.decode(
+                    jwt=token,
+                    key=Settings().REFRESH_TOKEN_KEY,  # type:ignore
+                    algorithms=[Settings().TOKEN_ALGORITHM],  # type:ignore
+                    options={
+                        'required': ['sub', 'exp'],
+                        'verify_exp': False,
+                    },
+                )
 
-            if user:
-                return user
+            username = payload.get('sub')
+            expire = payload.get('exp', 0)
+            current_datetime = datetime.now(timezone(timedelta(hours=-3)))
 
-        raise credentials_exception
+            if expire > current_datetime.timestamp():
+                user = session.scalar(
+                    select(UserModel).where(UserModel.username == username)
+                )
 
-    except jwt.PyJWTError:
-        raise credentials_exception
+                if user:
+                    return user
+
+            raise credentials_exception
+
+        except jwt.PyJWTError:
+            raise credentials_exception
+
+    return inner

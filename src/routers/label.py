@@ -34,7 +34,9 @@ router = APIRouter(prefix='/label', tags=['Label'])
     response_model=LabelPublicSchema,
 )
 def create_label(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     label_input: Annotated[LabelCreateSchema, Body()],
 ):
@@ -67,7 +69,9 @@ def create_label(
     response_model=LabelsPublicSchema,
 )
 def show_all_labels(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     page_size: Annotated[int, Query(gt=0)] = 10,
     page: Annotated[int, Query(ge=0)] = 0,
@@ -112,7 +116,9 @@ def show_all_labels(
     response_model=LabelPublicSchema,
 )
 def show_label(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     label_id: Annotated[int, Path()],
 ):
@@ -138,7 +144,9 @@ def show_label(
     response_model=LabelPublicSchema,
 )
 def update_label(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     label_id: Annotated[int, Path()],
     label_input: Annotated[LabelUpdateSchema, Body()],
@@ -178,7 +186,9 @@ def update_label(
     response_model=InfoSuccessSchema,
 )
 def delete_label(
-    current_user: Annotated[UserModel, Depends(get_current_user)],
+    current_user: Annotated[
+        UserModel, Depends(get_current_user('access_token'))
+    ],
     session: Annotated[Session, Depends(get_session)],
     label_id: Annotated[int, Path()],
 ):
