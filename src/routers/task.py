@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
+from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
 
 from src.dependencies import get_current_user, get_session
 from src.models import LabelModel, TaskModel, TaskStates, UserModel
-from src.schemas import TaskCreateSchema, TaskPublicSchema
+from src.schemas import TaskCreateSchema, TaskPublicSchema, TasksPublicSchema
 
 router = APIRouter(prefix='/task', tags=['Task'])
 
@@ -70,3 +70,79 @@ def create_task(
         raise error
 
     return task
+
+
+@router.get(
+    '/all',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=TasksPublicSchema,
+)
+def show_all_tasks(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    page_size: Annotated[int, Query(gt=0)] = 10,
+    page: Annotated[int, Query(ge=0)] = 0,
+    order_by: Annotated[
+        str,
+        Query(
+            pattern=r'^(?:(?:task_id|task_title|task_description|task_status|'
+            r'task_expires_at|label_id|label_title|label_color|'
+            r'label_priority)-(?:asc|desc)){1}$'
+        ),
+    ] = 'task_id-asc',
+):
+    orders = {
+        'task_id': TaskModel.id,
+        'task_title': TaskModel.title,
+        'task_description': TaskModel.description,
+        'task_status': TaskModel.status,
+        'task_expires_at': TaskModel.expires_at,
+        'label_id': LabelModel.id,
+        'label_title': LabelModel.title,
+        'label_color': LabelModel.color,
+        'label_priority': LabelModel.priority,
+    }
+
+    column, sort = order_by.split('-')
+
+    if sort == 'asc':
+        order = asc(orders[column])
+
+    elif sort == 'desc':
+        order = desc(orders[column])
+
+    if column[:4] == 'task':
+        tasks = session.scalars(
+            select(TaskModel)
+            .where(TaskModel.user_id == current_user.id)
+            .limit(page_size)
+            .offset(page)
+            .order_by(order)
+        ).all()
+
+    else:
+        tasks = session.scalars(
+            select(TaskModel)
+            .join(LabelModel)
+            .where(TaskModel.user_id == current_user.id)
+            .limit(page_size)
+            .offset(page)
+            .order_by(order)
+        ).all()
+
+    for task in tasks:
+        if (
+            task.expires_at.timestamp()
+            < datetime.now(timezone(timedelta(hours=-3))).timestamp()
+        ):
+            task.status = TaskStates.EXPIRED
+
+    try:
+        session.add(tasks)
+        session.commit()
+    except Exception as error:
+        session.rollback()
+        raise error
+
+    return {'tasks': tasks}

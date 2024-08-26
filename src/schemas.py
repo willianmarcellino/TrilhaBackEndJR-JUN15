@@ -79,6 +79,10 @@ class TaskPublicSchema(BaseModel):
     created_at: datetime
 
 
+class TasksPublicSchema(BaseModel):
+    tasks: list[TaskPublicSchema]
+
+
 class TaskCreateSchema(BaseModel):
     title: Annotated[str, Field(max_length=100)]
     description: Annotated[str, Field(max_length=255)] = ''
