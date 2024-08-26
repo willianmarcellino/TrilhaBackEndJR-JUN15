@@ -1,7 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    status,
+)
 from fastapi.responses import JSONResponse
 from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session
@@ -146,3 +154,40 @@ def show_all_tasks(
         raise error
 
     return {'tasks': tasks}
+
+
+@router.get(
+    '/{task_id}',
+    status_code=status.HTTP_200_OK,
+    response_class=JSONResponse,
+    response_model=TaskPublicSchema,
+)
+def show_task(
+    current_user: Annotated[UserModel, Depends(get_current_user)],
+    session: Annotated[Session, Depends(get_session)],
+    task_id: Annotated[int, Path(gt=0)],
+):
+    task = session.scalar(
+        select(TaskModel).where(
+            TaskModel.user_id == current_user.id, TaskModel.id == task_id
+        )
+    )
+    if task:
+        if (
+            task.expires_at.timestamp()
+            < datetime.now(timezone(timedelta(hours=-3))).timestamp()
+        ):
+            task.status = TaskStates.EXPIRED
+
+            try:
+                session.add(task)
+                session.commit()
+            except Exception as error:
+                session.rollback()
+                raise error
+
+        return task
+
+    raise HTTPException(
+        detail='Label not found', status_code=status.HTTP_404_NOT_FOUND
+    )
